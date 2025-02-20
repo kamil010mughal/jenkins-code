@@ -24,31 +24,46 @@ logging.basicConfig(filename=LOG_FILE,
 
 def enable():
     try:
-        subprocess.call("netsh interface set interface Wi-Fi enabled", shell=True)
-        print("Turning On the laptop WiFi")
-        logging.info("WiFi enabled")
+        if sys.platform.startswith("win"):
+            subprocess.call("netsh interface set interface Wi-Fi enabled", shell=True)
+            print("Turning On the laptop WiFi")
+            logging.info("WiFi enabled")
+        else:
+            # Linux/Mac alternative (optional: using nmcli if available)
+            subprocess.call("nmcli radio wifi on", shell=True)
+            print("Turning On the laptop WiFi (Linux/Mac)")
+            logging.info("WiFi enabled (Linux/Mac)")
     except Exception as e:
         print(f"Failed to enable WiFi: {e}")
         logging.error(f"Failed to enable WiFi: {e}")
 
 def disable():
     try:
-        subprocess.call("netsh interface set interface Wi-Fi disabled", shell=True)
-        print("Turning Off the laptop WiFi")
-        logging.info("WiFi disabled")
+        if sys.platform.startswith("win"):
+            subprocess.call("netsh interface set interface Wi-Fi disabled", shell=True)
+            print("Turning Off the laptop WiFi")
+            logging.info("WiFi disabled")
+        else:
+            # Linux/Mac alternative (optional: using nmcli if available)
+            subprocess.call("nmcli radio wifi off", shell=True)
+            print("Turning Off the laptop WiFi (Linux/Mac)")
+            logging.info("WiFi disabled (Linux/Mac)")
     except Exception as e:
         print(f"Failed to disable WiFi: {e}")
         logging.error(f"Failed to disable WiFi: {e}")
 
 def job():
     try:
-        subprocess.call("netsh interface set interface Wi-Fi enabled", shell=True)
+        if sys.platform.startswith("win"):
+            subprocess.call("netsh interface set interface Wi-Fi enabled", shell=True)
+        else:
+            subprocess.call("nmcli radio wifi on", shell=True)
         print("WiFi is enabled and connected to internet")
         logging.info("WiFi is enabled and connected to the internet.")
         
-        response = subprocess.call(f"ping -n 1 {PING_HOST}", shell=True)
+        response = subprocess.call(f"ping -n 1 {PING_HOST}" if sys.platform.startswith("win") else f"ping -c 1 {PING_HOST}", shell=True)
         
-        if response == 1:
+        if response != 0:
             print("Your Connection is not working")
             logging.warning("WiFi connection not working, ping failed.")
 
@@ -65,7 +80,7 @@ def job():
 
                 time.sleep(5)
 
-                response = subprocess.call(f"ping -n 1 {PING_HOST}", shell=True)
+                response = subprocess.call(f"ping -n 1 {PING_HOST}" if sys.platform.startswith("win") else f"ping -c 1 {PING_HOST}", shell=True)
                 if response == 0:
                     print("Reconnection successful!")
                     logging.info("Reconnection successful!")
@@ -88,26 +103,27 @@ def is_admin():
         if sys.platform.startswith("win"):
             return ctypes.windll.shell32.IsUserAnAdmin()
         else:
-            # On Linux/Mac, assume admin privileges (or use an alternative check)
+            # On Linux/Mac, assume admin privileges (or implement an alternative check)
             return True
     except Exception as e:
         logging.error(f"Admin check failed: {e}")
         return False
 
-# ✅ Prevent Windows-Specific Code from Running on Linux
+# Schedule the job based on the operating system:
 if sys.platform.startswith("win"):
     if is_admin():
         sc.every(50).seconds.do(job)
     else:
-        # Run with admin privileges only on Windows
+        # Only attempt elevation on Windows
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
 else:
-    # Linux/Mac: Run the job without admin privileges
+    # Linux/Mac: schedule the job without elevation
     sc.every(50).seconds.do(job)
 
-# Keep the scheduler running
-while True:
+# For testing in Jenkins, run the scheduler for a fixed number of iterations and then exit.
+iterations = 5  # adjust the number of iterations as needed
+for _ in range(iterations):
     sc.run_pending()
     time.sleep(1)
 
-
+print("Job finished after fixed iterations.")

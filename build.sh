@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "Setting up Python environment..."
 
-# Create a virtual environment (venv)
+# Create a virtual environment
 python3 -m venv venv
 
 # Activate the virtual environment
@@ -12,7 +12,7 @@ echo "Installing dependencies..."
 pip install -r requirements.txt
 
 echo "Running application/tests..."
-# Run your Python application or tests. For example:
+# Run your Python application or tests
 python main.py
-# or if you are running tests with pytest, you might use:
+# Or if you run tests with pytest:
 # pytest

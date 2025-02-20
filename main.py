@@ -1,6 +1,6 @@
+import sys
 import ctypes
 import subprocess
-import sys
 import time
 import logging
 import schedule as sc
@@ -85,16 +85,29 @@ def job():
 
 def is_admin():
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
+        if sys.platform.startswith("win"):
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        else:
+            # On Linux/Mac, assume admin privileges (or use an alternative check)
+            return True
     except Exception as e:
         logging.error(f"Admin check failed: {e}")
         return False
 
-if is_admin():
-    sc.every(50).seconds.do(job)
+# ✅ Prevent Windows-Specific Code from Running on Linux
+if sys.platform.startswith("win"):
+    if is_admin():
+        sc.every(50).seconds.do(job)
+    else:
+        # Run with admin privileges only on Windows
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
 else:
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+    # Linux/Mac: Run the job without admin privileges
+    sc.every(50).seconds.do(job)
 
+# Keep the scheduler running
 while True:
     sc.run_pending()
     time.sleep(1)
+
+

@@ -29,7 +29,6 @@ def enable():
             print("Turning On the laptop WiFi")
             logging.info("WiFi enabled")
         else:
-            # Linux/Mac alternative (optional: using nmcli if available)
             subprocess.call("nmcli radio wifi on", shell=True)
             print("Turning On the laptop WiFi (Linux/Mac)")
             logging.info("WiFi enabled (Linux/Mac)")
@@ -44,7 +43,6 @@ def disable():
             print("Turning Off the laptop WiFi")
             logging.info("WiFi disabled")
         else:
-            # Linux/Mac alternative (optional: using nmcli if available)
             subprocess.call("nmcli radio wifi off", shell=True)
             print("Turning Off the laptop WiFi (Linux/Mac)")
             logging.info("WiFi disabled (Linux/Mac)")
@@ -58,7 +56,7 @@ def job():
             subprocess.call("netsh interface set interface Wi-Fi enabled", shell=True)
         else:
             subprocess.call("nmcli radio wifi on", shell=True)
-        print("WiFi is enabled and connected to internet")
+        print("WiFi is enabled and connected to the internet")
         logging.info("WiFi is enabled and connected to the internet.")
         
         response = subprocess.call(f"ping -n 1 {PING_HOST}" if sys.platform.startswith("win") else f"ping -c 1 {PING_HOST}", shell=True)
@@ -73,7 +71,7 @@ def job():
             while attempt_counter < max_attempts:
                 print(f"Attempt {attempt_counter + 1} to reconnect...")
                 logging.info(f"Attempt {attempt_counter + 1} to reconnect...")
-                
+
                 disable()
                 time.sleep(1)
                 enable()
@@ -103,27 +101,16 @@ def is_admin():
         if sys.platform.startswith("win"):
             return ctypes.windll.shell32.IsUserAnAdmin()
         else:
-            # On Linux/Mac, assume admin privileges (or implement an alternative check)
-            return True
+            return True  # Assume admin privileges on Linux/Mac
     except Exception as e:
         logging.error(f"Admin check failed: {e}")
         return False
 
-# Schedule the job based on the operating system:
-if sys.platform.startswith("win"):
-    if is_admin():
-        sc.every(50).seconds.do(job)
-    else:
-        # Only attempt elevation on Windows
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-else:
-    # Linux/Mac: schedule the job without elevation
-    sc.every(50).seconds.do(job)
+# Schedule the job every 50 seconds
+sc.every(50).seconds.do(job)
 
-# For testing in Jenkins, run the scheduler for a fixed number of iterations and then exit.
-iterations = 5  # adjust the number of iterations as needed
-for _ in range(iterations):
+# Infinite loop to keep the container running
+print("Container is running... Press Ctrl+C to stop.")
+while True:
     sc.run_pending()
-    time.sleep(1)
-
-print("Job finished after fixed iterations.")
+    time.sleep(10)  # Keeps checking every 10 seconds
